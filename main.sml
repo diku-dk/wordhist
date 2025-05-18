@@ -125,6 +125,8 @@ fun main () =
        cmdSymTabExtend st_fname words_fname
    | ["symtab-show", st_fname] => cmdSymTabShow st_fname
    | _ => (err "Bad options\n"; OS.Process.exit OS.Process.failure))
-  handle Wordhist.Error e => err ("Futhark error:\n" ^ e)
+  handle
+    Wordhist.Error e => err ("Futhark error:\n" ^ e)
+  | Wordhist.Free => err "Used a Futhark object after freeing it."
 
 val () = main ()
