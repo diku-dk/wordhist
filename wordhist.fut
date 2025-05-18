@@ -1,26 +1,10 @@
 import "lib/github.com/diku-dk/segmented/segmented"
-import "lib/github.com/diku-dk/containers/key"
+import "lib/github.com/diku-dk/containers/hashkey"
 import "lib/github.com/diku-dk/containers/hashmap"
 import "lib/github.com/diku-dk/containers/hashset"
 import "lib/github.com/diku-dk/cpprandom/random"
 import "lib/github.com/diku-dk/sorts/radix_sort"
 import "lib/github.com/diku-dk/containers/array"
-
-module i64_key = {
-  type k = i64
-  type ctx = ()
-
-  def m : i64 = 1
-
-  def hash _ (a: [m]u64) (x: i64) : u64 =
-    let x = a[0] * u64.i64 x
-    let x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9
-    let x = (x ^ (x >> 27)) * 0x94d049bb133111eb
-    let y = (x ^ (x >> 31))
-    in y
-
-  def eq _ : i64 -> i64 -> bool = (==)
-}
 
 module type slice = {
   type elem
@@ -50,19 +34,19 @@ module mk_slice_key
     val (==) : S.elem -> S.elem -> bool
     val word : S.elem -> u64
   })
-  : key
+  : hashkey
     with ctx = []S.elem
-    with k = S.slice = {
+    with key = S.slice = {
   type i = u64
-  type k = S.slice
+  type key = S.slice
   type~ ctx = ?[l].[l]S.elem
 
   def m : i64 = 1
 
-  def eq (xctx: []S.elem) (x: k) (yctx: []S.elem) (y: k) =
+  def eq (xctx: []S.elem) (x: key) (yctx: []S.elem) (y: key) =
     arreq (E.==) (S.get x xctx) (S.get y yctx)
 
-  def hash (ctx: []S.elem) (a: [m]u64) (x: k) : u64 =
+  def hash (ctx: []S.elem) (a: [m]u64) (x: key) : u64 =
     loop v = 0
     for x' in S.get x ctx do
       let x = a[0] * (v ^ E.word x')
@@ -119,18 +103,19 @@ def packwords [n] [k] (s: [n]char) (words: [k]word) : ?[m].([m]char, [k]word) =
      )
 
 type~ symtab =
-  { wmap: wordmap.hashmap sym
-  , ws: ?[m].[m]word
-  , heap: ?[n].[n]char
-  }
+  ?[m].{ wmap: wordmap.map [m] sym
+       , ws: [m]word
+       , heap: ?[n].[n]char
+       }
 
 entry symtab_new [n] (s: [n]char) : symtab =
   let ws = break s
   let rng = engine.rng_from_seed [1]
-  let (rng, ws) = wordarray.dedup s rng ws
+  let (_rng, ws) = wordarray.dedup s rng ws
   let (heap, ws) = packwords s ws
-  let (_rng, wmap) = wordmap.from_array heap rng (zip ws (map i32.i64 (indices ws)))
-  in {wmap, ws, heap}
+  let [w] (wmap: wordmap.map [w] i32) =
+    wordmap.from_array heap (zip ws (map i32.i64 (indices ws)))
+  in {wmap, ws = sized w ws, heap}
 
 def symtab_member [n] (st: symtab) (s: [n]char) : bool =
   wordmap.member s (word.mk 0 n) st.wmap
@@ -144,7 +129,6 @@ entry symtab_sym2word (st: symtab) (x: sym) : ?[k].[k]char =
   word.get st.ws[x] st.heap
 
 entry symtab_extend [n] (st: symtab) (s: [n]char) : symtab =
-  let rng = engine.rng_from_seed [1]
   let (s, new_ws) = packwords s (filter (\w -> wordmap.not_member s w st.wmap) (break s))
   let heap = st.heap ++ s
   let shift w =
@@ -155,8 +139,8 @@ entry symtab_extend [n] (st: symtab) (s: [n]char) : symtab =
   let (old_ws, old_syms) = unzip (wordmap.to_array st.wmap)
   let ws = old_ws ++ new_ws
   let syms = old_syms ++ new_syms
-  let (_rng, wmap) = zip ws syms |> wordmap.from_array heap rng
-  in {wmap, ws, heap}
+  let [w] (wmap: wordmap.map [w] i32) = wordmap.from_array heap (zip ws syms)
+  in {wmap, ws = sized w ws, heap}
 
 entry wordhist [n] (st: symtab) (s: [n]char) : []i32 =
   let syms = map (\w -> i64.i32 (symtab_lookup st (word.get w s))) (break s)

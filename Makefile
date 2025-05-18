@@ -24,8 +24,11 @@ libwordhist.a: wordhist.o wordhist.smlfut.o
 wordhist.smlfut.c: wordhist.c
 	smlfut --target=mlton-mono wordhist.json --structure-name=Wordhist
 
-wordhist.c: wordhist.fut
+wordhist.c: wordhist.fut lib
 	$(FUTHARK) $(FUTHARK_BACKEND) --library wordhist.fut
+
+lib: futhark.pkg
+	futhark pkg sync
 
 clean:
 	rm -rf *.smlfut.* wordhist *.o *.a wordhist.c wordhist.h wordhist.json wordhist.sig wordhist.sml MLB
