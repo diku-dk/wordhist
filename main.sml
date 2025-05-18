@@ -39,10 +39,14 @@ fun main () =
     val st = Wordhist.Entry.symtab_new ctx str_arr
     val h = Wordhist.Entry.wordhist ctx (st, str_arr)
     fun printSym (sym, k) =
-      print
-        (word8ArrayToString (Wordhist.Word8Array1.values
-           (Wordhist.Entry.symtab_sym2word ctx (st, Int32.fromInt sym))) ^ ": "
-         ^ Int32.toString k ^ "\n")
+      let
+        val arr = Wordhist.Entry.symtab_sym2word ctx (st, Int32.fromInt sym)
+      in
+        print
+          (word8ArrayToString (Wordhist.Word8Array1.values arr) ^ ": "
+           ^ Int32.toString k ^ "\n");
+        Wordhist.Word8Array1.free arr
+      end
   in
     Int32Array.appi printSym (Wordhist.Int32Array1.values h);
     Wordhist.Context.free ctx
