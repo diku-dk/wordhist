@@ -100,12 +100,11 @@ fun cmdSymTabShow st_fname =
     let
       val st = Wordhist.Opaque.symtab.restore ctx
         (Word8ArraySlice.full (readFileAsWord8Array st_fname))
-      val () = Wordhist.Opaque.symtab.free st
       fun printSym sym =
         let
           val arr = Wordhist.Entry.symtab_sym2word ctx (st, Int32.fromInt sym)
         in
-          print (word8ArrayToString (Wordhist.Word8Array1.values arr));
+          print (word8ArrayToString (Wordhist.Word8Array1.values arr) ^ "\n");
           Wordhist.Word8Array1.free arr
         end
 
@@ -113,8 +112,8 @@ fun cmdSymTabShow st_fname =
       fun printSyms i =
         if i = n then () else (printSym i; printSyms (i + 1))
     in
-      print ("Symbol table size: " ^ Int.toString n ^ "\n");
-      printSyms 0
+      printSyms 0;
+      Wordhist.Opaque.symtab.free st
     end)
 
 
