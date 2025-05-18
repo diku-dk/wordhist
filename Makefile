@@ -1,6 +1,6 @@
 MLTON=mlton
 FUTHARK?=futhark
-FUTHARK_BACKEND?=multicore
+FUTHARK_BACKEND?=c
 CC?=cc
 CFLAGS?=-O3
 MLTONFLAGS = \

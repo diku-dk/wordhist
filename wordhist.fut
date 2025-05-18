@@ -82,7 +82,7 @@ def (&&&) f g x = (f x, g x)
 
 type word = word.slice
 
-def break [n] (s: [n]char) : []word =
+def words [n] (s: [n]char) : []word =
   segmented_scan (+) 0 (map is_space s) (map (isnt_space >-> i64.bool) s)
   |> (id &&& rotate 1)
   |> uncurry zip
@@ -109,7 +109,7 @@ type~ symtab =
        }
 
 entry symtab_new [n] (s: [n]char) : symtab =
-  let ws = break s
+  let ws = words s
   let rng = engine.rng_from_seed [1]
   let (_rng, ws) = wordarray.dedup s rng ws
   let (heap, ws) = packwords s ws
@@ -129,7 +129,14 @@ entry symtab_sym2word (st: symtab) (x: sym) : ?[k].[k]char =
   word.get st.ws[x] st.heap
 
 entry symtab_extend [n] (st: symtab) (s: [n]char) : symtab =
-  let (s, new_ws) = packwords s (filter (\w -> wordmap.not_member s w st.wmap) (break s))
+  let rng = engine.rng_from_seed [1]
+  let (s, new_ws) =
+    s
+    |> words
+    |> filter (\w -> wordmap.not_member s w st.wmap)
+    |> wordarray.dedup s rng
+    |> (.1)
+    |> packwords s
   let heap = st.heap ++ s
   let shift w =
     let (i, n) = word.unmk w
@@ -139,9 +146,12 @@ entry symtab_extend [n] (st: symtab) (s: [n]char) : symtab =
   let (old_ws, old_syms) = unzip (wordmap.to_array st.wmap)
   let ws = old_ws ++ new_ws
   let syms = old_syms ++ new_syms
-  let [w] (wmap: wordmap.map [w] i32) = wordmap.from_array heap (zip ws syms)
+  let kvs = zip ws syms
+  let [w] (wmap: wordmap.map [w] i32) = wordmap.from_array heap kvs
   in {wmap, ws = sized w ws, heap}
 
+entry symtab_size (st: symtab) : i64 = wordmap.size st.wmap
+
 entry wordhist [n] (st: symtab) (s: [n]char) : []i32 =
-  let syms = map (\w -> i64.i32 (symtab_lookup st (word.get w s))) (break s)
+  let syms = map (\w -> i64.i32 (symtab_lookup st (word.get w s))) (words s)
   in hist (+) 0 (length st.ws) syms (map (const 1) syms)
