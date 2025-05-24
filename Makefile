@@ -12,6 +12,11 @@ ifeq ($(FUTHARK_BACKEND),cuda)
 	MLTONFLAGS+=-link-opt -lcuda -link-opt -lcudart -link-opt -lnvrtc
 endif
 
+ifeq ($(FUTHARK_BACKEND),hip)
+	MLTONFLAGS+=-link-opt -lamdhip64 -link-opt -lhiprtc
+endif
+
+
 wordhist: wordhist.mlb main.sml wordhist.c wordhist.smlfut.c
 	$(MLTON) $(MLTONFLAGS) wordhist.mlb wordhist.smlfut.c wordhist.c
 
